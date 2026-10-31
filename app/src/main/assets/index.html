@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F4A33">
+<title>Выездная проверка контрагента</title>
+<style>
+:root{
+  --spruce:#1F4A33; --spruce-2:#2C6247; --resin:#E3A21A; --resin-ink:#2A1C00;
+  --bg:#F2F4F1; --card:#FFFFFF; --ink:#18201B; --muted:#5B675F; --line:#CDD5CF; --field:#F7F9F7;
+  --on:#1F4A33; --on-ink:#FFFFFF; --bad:#B3261E; --ok:#2E7D4F;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --spruce:#173826; --spruce-2:#24543B; --resin:#F0B43A; --resin-ink:#2A1C00;
+  --bg:#101512; --card:#18201B; --ink:#E8EDE9; --muted:#9DABA2; --line:#2F3B33; --field:#111813;
+  --on:#5FB585; --on-ink:#08140D; --bad:#FF8A80; --ok:#6FD49A; color-scheme: dark; } }
+:root[data-theme="dark"]{ --spruce:#173826; --spruce-2:#24543B; --resin:#F0B43A; --bg:#101512; --card:#18201B; --ink:#E8EDE9; --muted:#9DABA2; --line:#2F3B33; --field:#111813; --on:#5FB585; --on-ink:#08140D; --bad:#FF8A80; --ok:#6FD49A; color-scheme: dark; }
+*{box-sizing:border-box}
+:root{ padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px); }
+html{ scroll-padding-top: calc(env(safe-area-inset-top,0px) + 70px); }
+body{ margin:0; background:var(--bg); color:var(--ink); font:17px/1.4 Roboto, "Noto Sans", system-ui, sans-serif; -webkit-tap-highlight-color:transparent; padding-bottom:96px; }
+body::before{ content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--spruce); }
+button,input,select,textarea{ font:inherit; color:inherit; }
+button{ cursor:pointer; }
+:focus-visible{ outline:3px solid var(--resin); outline-offset:2px; }
+[hidden]{ display:none !important; }
+
+header.top{ position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--spruce); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:10px; }
+.top .ttl{ flex:1; min-width:0; }
+.top h1{ font-size:18px; margin:0; font-weight:700; letter-spacing:.1px; }
+.top #hdrSub{ font-size:14px; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.gps{ border:0; border-radius:999px; padding:7px 12px; font-size:14px; font-weight:700; white-space:nowrap; }
+.gps::before{ content:""; display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:1px; background:currentColor; }
+.gps.ok{ background:#D9F2E2; color:#145C33; } .gps.wait{ background:#FFF0CC; color:#7A5200; } .gps.bad{ background:#FFDAD6; color:#8C1D18; }
+.top .menu{ background:transparent; border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:10px; padding:7px 10px; font-size:14px; }
+
+main{ max-width:760px; margin:0 auto; padding:12px; }
+.sec{ background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:10px; overflow:hidden; }
+.sec>summary{ list-style:none; padding:16px 16px; display:flex; gap:10px; align-items:center; font-weight:700; font-size:17px; min-height:56px; }
+.sec>summary::-webkit-details-marker{ display:none; }
+.sec>summary::after{ content:""; width:10px; height:10px; border-right:2.5px solid var(--muted); border-bottom:2.5px solid var(--muted); transform:rotate(45deg); margin-left:auto; flex:none; transition:transform .15s; }
+.sec[open]>summary::after{ transform:rotate(-135deg); }
+.sec[open]>summary{ border-bottom:1px solid var(--line); }
+.st{ flex:1; }
+.badge{ background:var(--resin); color:var(--resin-ink); border-radius:999px; font-size:13px; padding:2px 9px; flex:none; }
+.secbody{ padding:14px 14px 16px; }
+.item+.item{ margin-top:14px; }
+.fld{ display:block; margin:0 0 12px; }
+.fld>span{ display:block; font-size:14px; color:var(--muted); margin-bottom:5px; font-weight:500; }
+input,textarea,select{ width:100%; min-height:48px; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; background:var(--field); }
+textarea{ resize:vertical; min-height:72px; }
+input:focus,textarea:focus,select:focus{ border-color:var(--spruce-2); outline:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--spruce-2) 25%, transparent); }
+.opts{ display:flex; flex-wrap:wrap; gap:8px; }
+.opt{ min-height:44px; padding:9px 15px; border-radius:10px; border:1.5px solid var(--line); background:var(--field); font-weight:500; }
+.opt.on{ background:var(--on); border-color:var(--on); color:var(--on-ink); }
+.opt.on::before{ content:"✓ "; font-weight:700; }
+.fld.inline{ margin-bottom:10px; }
+h4.sub{ margin:4px 0 10px; font-size:16px; color:var(--spruce-2); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) h4.sub{ color:var(--on); } }
+.rowcard{ border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:var(--card); }
+.rowhead{ display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:1px dashed var(--line); }
+.rowtitle{ flex:1; font-weight:600; font-size:16px; }
+.rowtitle small{ display:block; font-weight:400; color:var(--muted); font-size:14px; }
+.rowtitle .num{ color:var(--muted); margin-right:4px; }
+.rowname{ flex:1; min-height:42px; }
+.rowbody{ padding:12px 12px 2px; }
+.del{ background:transparent; border:1.5px solid var(--line); color:var(--bad); border-radius:10px; min-width:44px; min-height:42px; font-weight:700; }
+.del.wide{ width:100%; margin-top:6px; }
+.add{ width:100%; min-height:48px; border:1.5px dashed var(--spruce-2); background:transparent; color:var(--spruce-2); border-radius:10px; font-weight:600; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .add{ color:var(--on); border-color:var(--on);} }
+.species{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.species label{ display:block; } .species em{ display:block; font-style:normal; font-size:13px; color:var(--muted); margin-bottom:3px; }
+.species input{ padding:10px 8px; text-align:center; }
+.sum{ display:block; margin-top:6px; font-size:14px; color:var(--ok); } .sum.bad{ color:var(--bad); }
+.hint{ color:var(--muted); font-size:14px; margin:0 0 10px; }
+.secphotos{ margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+.thumbs{ display:flex; gap:8px; overflow-x:auto; margin-bottom:10px; }
+.thumbs:empty{ display:none; }
+.th{ padding:0; border:0; border-radius:8px; overflow:hidden; flex:none; width:84px; height:84px; background:#000; }
+.th img{ width:100%; height:100%; object-fit:cover; display:block; }
+.cam{ width:100%; min-height:52px; border:0; border-radius:12px; background:var(--resin); color:var(--resin-ink); font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px; }
+.cam::before{ content:""; width:22px; height:18px; background:currentColor; -webkit-mask:var(--camico) center/contain no-repeat; mask:var(--camico) center/contain no-repeat; }
+:root{ --camico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M8 0h8l2 3h4a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4zM12 6a5 5 0 1 0 0 10 5 5 0 0 0 0-10z'/%3E%3C/svg%3E"); }
+.sigrow{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+img.sig{ height:64px; max-width:60%; background:#fff; border:1px solid var(--line); border-radius:8px; }
+.ghost{ min-height:44px; padding:8px 14px; border-radius:10px; border:1.5px solid var(--spruce-2); background:transparent; font-weight:600; }
+
+nav.bar{ position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--card); border-top:1px solid var(--line); display:flex; gap:10px; padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px)); }
+nav.bar button{ flex:1; min-height:54px; border-radius:12px; font-weight:700; font-size:16px; }
+#btnPhotos{ background:var(--field); border:1.5px solid var(--line); }
+#btnPhotos b{ display:inline-block; min-width:24px; padding:0 6px; border-radius:999px; background:var(--resin); color:var(--resin-ink); margin-left:6px; }
+#btnPdf{ background:var(--spruce); color:#fff; border:0; flex:1.4; }
+
+.screen{ position:fixed; inset:0; z-index:20; background:var(--bg); overflow:auto; padding-top:env(safe-area-inset-top,0px); padding-bottom:calc(90px + env(safe-area-inset-bottom,0px)); }
+.screen header{ position:sticky; top:0; background:var(--spruce); color:#fff; display:flex; align-items:center; gap:10px; padding:12px 14px; z-index:2; }
+.screen header h2{ flex:1; margin:0; font-size:18px; }
+.screen header button{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,.45); border-radius:10px; padding:8px 12px; }
+#gallery{ max-width:760px; margin:0 auto; padding:12px; }
+.gitem{ display:grid; grid-template-columns:120px 1fr; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:10px; }
+.gimg{ padding:0; border:0; border-radius:8px; overflow:hidden; background:#000; width:120px; height:120px; }
+.gimg img{ width:100%; height:100%; object-fit:cover; display:block; }
+.gmeta{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.gmeta small{ color:var(--muted); font-size:13px; }
+.gmeta select,.gmeta input{ min-height:42px; padding:8px 10px; font-size:15px; }
+.empty{ color:var(--muted); text-align:center; padding:40px 20px; }
+.fab{ position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom,0px)); max-width:736px; margin:0 auto; }
+
+.modal{ position:fixed; inset:0; z-index:30; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:16px; }
+.sheet{ background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:672px; }
+.sheet h3{ margin:0 0 4px; font-size:18px; }
+.sheet p{ margin:0 0 12px; color:var(--muted); white-space:pre-line; word-break:break-word; }
+#signCanvas{ display:block; background:#fff; border:2px dashed var(--line); border-radius:10px; touch-action:none; margin:0 auto 14px; }
+.row{ display:flex; gap:10px; flex-wrap:wrap; }
+.row button{ flex:1; min-height:50px; border-radius:12px; font-weight:700; border:1.5px solid var(--line); background:var(--field); }
+.row .primary{ background:var(--spruce); color:#fff; border-color:var(--spruce); }
+#viewer{ position:fixed; inset:0; z-index:40; background:#000; display:flex; flex-direction:column; }
+#viewer img{ flex:1; min-height:0; object-fit:contain; width:100%; }
+#viewer .row{ padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px)); }
+#viewer .row button{ background:#222; color:#fff; border-color:#444; }
+#busy{ position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; }
+#busy div{ background:var(--card); padding:20px 24px; border-radius:14px; font-weight:600; display:flex; gap:14px; align-items:center; }
+#busy div::before{ content:""; width:24px; height:24px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--spruce-2); animation:spin 0.9s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce){ #busy div::before{ animation-duration:3s; } }
+#toast{ position:fixed; left:50%; bottom:calc(92px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,20px); opacity:0; background:#222; color:#fff; padding:12px 18px; border-radius:12px; z-index:60; transition:.2s; pointer-events:none; max-width:90vw; text-align:center; font-size:15px; }
+#toast.show{ opacity:1; transform:translate(-50%,0); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="ttl"><h1>Выездная проверка</h1><span id="hdrSub"></span></div>
+  <button id="gps" class="gps wait" type="button">GPS: поиск</button>
+  <button id="btnNew" class="menu" type="button" aria-label="Новая проверка">Новая</button>
+</header>
+<main id="form"></main>
+<nav class="bar">
+  <button id="btnPhotos" type="button">Фото<b id="photoCount">0</b></button>
+  <button id="btnPdf" type="button">Сформировать PDF</button>
+</nav>
+
+<input id="camInput" type="file" accept="image/*" capture="environment" hidden>
+
+<section id="photosView" class="screen" hidden>
+  <header><h2>Фотографии проверки</h2><button id="photosClose" type="button">Готово</button></header>
+  <div id="gallery"></div>
+  <button id="photosCam" class="cam fab" type="button">Сделать общее фото</button>
+</section>
+
+<div id="viewer" hidden><img id="viewerImg" alt="Фото"><div class="row"><button id="viewerDel" type="button">Удалить</button><button id="viewerClose" type="button">Закрыть</button></div></div>
+
+<div id="signModal" class="modal" hidden><div class="sheet">
+  <h3>Подпись</h3><p id="signWho"></p>
+  <canvas id="signCanvas"></canvas>
+  <div class="row"><button id="signClear" type="button">Стереть</button><button id="signCancel" type="button">Отмена</button><button id="signSave" class="primary" type="button">Сохранить</button></div>
+</div></div>
+
+<div id="result" class="modal" hidden><div class="sheet">
+  <h3>Отчёт готов</h3><p id="resInfo"></p>
+  <div class="row"><button id="resSave" class="primary" type="button">Сохранить PDF</button><button id="resShare" type="button">Отправить</button></div>
+  <div class="row" style="margin-top:10px"><button id="resClose" type="button">Вернуться к протоколу</button></div>
+</div></div>
+
+<div id="busy" hidden><div id="busyMsg">Подождите…</div></div>
+<div id="toast" role="status"></div>
+<script>
+/* ===== СХЕМА ПРОТОКОЛА ===== */
+const YN = ['Да','Нет'];
+const docRows = arr => arr.map(([num, doc]) => ({num, doc}));
+const DOC_COLS = [
+  {key:'ans', kind:'choice', options:YN, label:'', w:1.6},
+  {key:'note', kind:'text', label:'№ документа / примечание', w:3}
+];
+const DOC_LABELS = [{key:'num', label:'№', w:0.7},{key:'doc', label:'Документ', w:5}];
+const TECH_COLS = [
+  {key:'decl', kind:'text', label:'Заявлено', w:1.4},
+  {key:'fact', kind:'text', label:'Установлено', w:1.4},
+  {key:'glonass', kind:'check', label:'ГЛОНАСС', w:1.2},
+  {key:'own', kind:'check', label:'Собственная', w:1.4},
+  {key:'hired', kind:'check', label:'Наёмная', w:1.2}
+];
+
+const SCHEMA = [
+ {id:'head', title:'Общие данные проверки', kv:true, items:[
+   {type:'text', id:'num', label:'Номер протокола', inputmode:'numeric'},
+   {type:'text', id:'org', label:'Проверяющая организация', def:'ООО «ЭГГЕР ДРЕВПРОДУКТ ГАГАРИН»'},
+   {type:'date', id:'date', label:'Дата проведения проверки'},
+   {type:'single', id:'kind', label:'Вид проверки', options:['Плановая','Первичная','Внеплановая']},
+   {type:'text', id:'reason', label:'Причина внеплановой проверки', multiline:true, showIf:d=>d.kind==='Внеплановая'},
+   {type:'multi', id:'place', label:'Место проведения проверки', options:['Офис','Склад','Лесосека','МСД','База','Производство','Другое'], otherOf:'Другое', otherId:'placeOther'}
+ ]},
+ {id:'people', title:'Участники проверки', items:[
+   {type:'table', id:'participants', dynamic:true, minRows:1, startRows:2, rowTitle:'Участник', cols:[
+     {key:'fio', kind:'text', label:'ФИО', w:3},
+     {key:'pos', kind:'text', label:'Должность', w:2.5},
+     {key:'org', kind:'text', label:'Организация', w:2.5}
+   ]}
+ ]},
+ {id:'s1', title:'1. Общие сведения', items:[
+   {type:'table', id:'general', labelCols:[{key:'p', label:'Параметр', w:2.2}],
+    rows:[{p:'Наименование юридического лица'},{p:'ФИО руководителя и должность'},{p:'Юридический адрес'},{p:'Адреса фактической деятельности'}],
+    cols:[{key:'decl', kind:'text', label:'Заявлено контрагентом', w:2.4, multiline:true},{key:'fact', kind:'text', label:'Установлено проверкой', w:2.4, multiline:true}]}
+ ]},
+ {id:'s2', title:'2. Данные о предприятии', items:[
+   {type:'multi', id:'products', label:'2.1 Виды поставляемой продукции', options:['Круглый лес','Горбыль','Опилки','Щепа','Иное'], otherOf:'Иное', otherId:'productsOther'},
+   {type:'multi', id:'harvest', label:'2.2 Способ заготовки', options:['Механизированная','Ручная']},
+ ]},
+ {id:'s221', title:'2.2.1 Договоры аренды / купли-продажи лесных участков', items:[
+   {type:'table', id:'contracts', dynamic:true, minRows:1, startRows:1, rowTitle:'Договор', cols:[
+     {key:'numdate', kind:'text', label:'№ и дата договора', w:1.8},
+     {key:'term', kind:'text', label:'Срок действия', w:1.4},
+     {key:'addr', kind:'text', label:'Адрес', w:1.8, multiline:true},
+     {key:'vol', kind:'text', label:'Объём заготовки / купли-продажи', w:1.8},
+     {key:'sp', kind:'species', label:'Породный состав, %', parts:['Береза','Осина','Сосна','Ель'], w:1.7}
+   ]}
+ ]},
+ {id:'s222', title:'2.2.2–2.2.3 Лесозаготовительные работы и техника', items:[
+   {type:'single', id:'logging', label:'2.2.2 Лесозаготовительные работы ведутся', options:['да','нет']},
+   {type:'table', id:'tech', label:'2.2.3 Используемая техника', labelCols:[{key:'name', label:'Тип техники', w:2.6}],
+    rows:[{name:'Сортиментовоз'},{name:'Лесовоз'},{name:'Дорожная техника'},{name:'Лесозаготовительный комплекс (харвестер + форвардер)'}],
+    extraRows:{label:'Прочее', title:'Добавить технику'}, cols:TECH_COLS}
+ ]},
+ {id:'s23', title:'2.3 Сведения о производстве', items:[
+   {type:'single', id:'production', label:'Работы ведутся', options:['да','нет','н/п']},
+   {type:'table', id:'equip', labelCols:[{key:'name', label:'Тип оборудования', w:2.2}],
+    rows:[{name:'Лесопильное'},{name:'Фанерное'}], extraRows:{label:'Оборудование', title:'Добавить оборудование'},
+    cols:[{key:'own', kind:'text', label:'Собственное', w:1.4},{key:'rent', kind:'text', label:'Аренда', w:1.4},{key:'vol', kind:'text', label:'Объём производства', w:1.8}]}
+ ]},
+ {id:'s24', title:'2.4 Сведения о транспортировке', items:[
+   {type:'table', id:'transport', labelCols:[{key:'name', label:'Тип техники', w:2.6}],
+    rows:[{name:'Сортиментовоз'},{name:'Щеповоз'},{name:'Вагон', disable:['glonass']}], cols:TECH_COLS}
+ ]},
+ {id:'s25', title:'2.5 Сведения о персонале', items:[
+   {type:'table', id:'staff', labelCols:[{key:'cat', label:'Категория', w:4}],
+    rows:[{cat:'Офисные работники'},{cat:'Собственные на заготовке'},{cat:'Наёмные на заготовке'},{cat:'Персонал на производстве'},{cat:'Персонал на транспортировке (собственные/наемные)'}],
+    cols:[{key:'n', kind:'text', label:'Количество', w:1.6, inputmode:'numeric'}]}
+ ]},
+ {id:'s26', title:'2.6 Посещение лесосеки и/или производства', items:[
+   {type:'single', id:'visited', label:'Лесосека посещена', options:['да','нет']},
+   {type:'text', id:'notVisitedReason', label:'Причина непосещения', showIf:d=>d.visited==='нет'},
+   {type:'table', id:'visual', label:'2.6.1 Визуальный контроль работ', labelCols:[{key:'p', label:'Параметр', w:2.6}],
+    rows:[{p:'Лесосека активна'},{p:'Наличие техники'},{p:'Наличие рабочих'},{p:'Наличие лесоматериалов'},{p:'Производство'},{p:'Наличие прочего оборудования'}],
+    cols:[{key:'ans', kind:'choice', options:YN, w:1.6},{key:'note', kind:'text', label:'Примечание', w:2.6}]}
+ ]},
+ {id:'s27', title:'2.7 Лесные или производственные склады (МСД/ОЛИ)', items:[
+   {type:'single', id:'stores', label:'Наличие', options:['да','нет','н/п']},
+   {type:'table', id:'storeList', dynamic:true, minRows:0, startRows:1, rowTitle:'Склад', cols:[
+     {key:'addr', kind:'text', label:'Адрес', w:4, multiline:true},
+     {key:'wood', kind:'choice', label:'Наличие древесины', options:['да','нет'], w:2}
+   ]}
+ ]},
+ {id:'s3a', title:'3.А Документация: лесозаготовка', items:[
+   {type:'table', id:'docA', labelCols:DOC_LABELS, cols:DOC_COLS, rows:docRows([
+     ['3.1','Положительное заключение государственной экспертизы на проект'],
+     ['3.2','Лесная декларация'],
+     ['3.3','Технологическая карта разработки лесосеки в соответствии с лесной декларацией'],
+     ['3.4','Ежемесячные отчёты о количестве заготовленной древесины 1-ИЛ (за последний месяц)'],
+     ['3.5','Договор купли-продажи лесных насаждений со всеми приложениями']])}
+ ]},
+ {id:'s3b', title:'3.Б Покупка лесоматериалов у третьих лиц', items:[
+   {type:'table', id:'docB', labelCols:DOC_LABELS, cols:DOC_COLS, rows:docRows([
+     ['3.6','Список поставщиков лесоматериалов (с применяемой системой налогообложения)'],
+     ['3.7','Договор поставки лесоматериалов; к нему договор аренды лесного участка, лесные декларации или договор купли-продажи лесных насаждений'],
+     ['3.8','Копии платёжных поручений за последние 12 месяцев, подтверждающие оплату стоимости лесоматериалов, приобретаемых у третьих лиц'],
+     ['3.9','Осуществляется ли субпоставка лесоматериалов']])},
+   {type:'table', id:'subs', label:'Субпоставщики (п. 3.9 — «Да»)', dynamic:true, minRows:0, startRows:1, rowTitle:'Субпоставщик',
+    showIf:d=>d.docB && d.docB[3] && d.docB[3].ans==='Да', cols:[
+     {key:'name', kind:'text', label:'Наименование субпоставщика', w:3},
+     {key:'inn', kind:'text', label:'ИНН', w:1.6, inputmode:'numeric'},
+     {key:'tax', kind:'choice', options:['УСН','ОСН'], w:1.4},
+     {key:'basis', kind:'text', label:'Документ-основание', w:2.2}
+   ]}
+ ]},
+ {id:'s3v', title:'3.В Подтверждение ведения деятельности', items:[
+   {type:'table', id:'docV', labelCols:DOC_LABELS, cols:DOC_COLS, rows:docRows([
+     ['3.10','Правоустанавливающие документы на транспортные средства'],
+     ['3.11','Договоры на оказание транспортных услуг'],
+     ['3.12','Договоры аренды (с экипажем и без)'],
+     ['3.13','Договор аренды офиса / склада'],
+     ['3.14','Копии платёжных поручений; расчётных и корреспондирующих им приходных кассовых ордеров, подтверждающих уплату арендных платежей по договору аренды'],
+     ['3.15','Журнал учёта движения лесоматериалов на складе'],
+     ['3.16','Правоустанавливающие документы на здания/сооружения (офиса / склада / ОЛИ)'],
+     ['3.17','Правоустанавливающие документы на технологическое оборудование']])}
+ ]},
+ {id:'s3g', title:'3.Г Субаренда', items:[
+   {type:'table', id:'docG', labelCols:DOC_LABELS, cols:DOC_COLS, rows:docRows([
+     ['3.18','Договор субаренды офиса / склада'],
+     ['3.19','Договор аренды, на основании которого заключён договор субаренды'],
+     ['3.20','Копии платёжных поручений; расчётных и корреспондирующих им приходных кассовых ордеров, подтверждающих уплату субарендных платежей']])}
+ ]},
+ {id:'s4', title:'4. Репутация и внешние источники', items:[
+   {type:'table', id:'docRep', label:'4.А Документы и информация, предоставленные контрагентом', labelCols:[{key:'num', label:'№', w:0.7},{key:'doc', label:'Документ / сведения', w:5}],
+    cols:[{key:'ans', kind:'choice', options:YN, w:1.6},{key:'note', kind:'text', label:'Примечание', w:3}],
+    rows:docRows([['4.1','Список покупателей лесоматериалов; копии договоров поставки, заключённых контрагентом с покупателями (с исключением коммерческой информации)']])},
+   {type:'table', id:'risks', label:'4.Б Риски', labelCols:[{key:'num', label:'№', w:0.7},{key:'r', label:'Признак риска', w:3.3}],
+    rows:[{num:'4.2', r:'Судебные разбирательства'},{num:'4.3', r:'Неоплаченные штрафы'},{num:'4.4', r:'Неоплаченные налоги / задолженность перед бюджетом'}],
+    cols:[{key:'c', kind:'text', label:'Комментарий', w:4, multiline:true}]}
+ ]},
+ {id:'sign', title:'5. Подписи', noPhoto:true, items:[{type:'signatures'}]}
+];
+
+/* ===== УТИЛИТЫ ===== */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad2 = n => String(n).padStart(2,'0');
+const todayISO = () => { const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+const fmtDate = iso => { if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}.${m}.${y}`; };
+function tzStr(d){ const o=-d.getTimezoneOffset(); const s=o>=0?'+':'−'; const a=Math.abs(o); return `UTC${s}${pad2(Math.floor(a/60))}:${pad2(a%60)}`; }
+function fmtDT(ts){ const d=new Date(ts); return `${pad2(d.getDate())}.${pad2(d.getMonth()+1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; }
+const fmtLat = v => `${Math.abs(v).toFixed(6)}° ${v>=0?'с.ш.':'ю.ш.'}`;
+const fmtLon = v => `${Math.abs(v).toFixed(6)}° ${v>=0?'в.д.':'з.д.'}`;
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function toast(msg, ms=2600){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), ms); }
+
+/* ===== ХРАНИЛИЩЕ (IndexedDB) ===== */
+const IDB = {
+  db:null,
+  open(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open('egger-audit',1);
+    r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('kv'); d.createObjectStore('photos',{keyPath:'id'}); };
+    r.onsuccess=()=>{ this.db=r.result; res(true); }; r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); },
+  req(store, mode, fn){ return new Promise((res,rej)=>{ if(!this.db) return res(null);
+    const t=this.db.transaction(store,mode); const rq=fn(t.objectStore(store));
+    t.oncomplete=()=>res(rq ? rq.result : null); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); },
+  get(k){ return this.req('kv','readonly',s=>s.get(k)); },
+  set(k,v){ return this.req('kv','readwrite',s=>s.put(v,k)); },
+  photos(){ return this.req('photos','readonly',s=>s.getAll()); },
+  putPhoto(p){ return this.req('photos','readwrite',s=>s.put(p)); },
+  delPhoto(id){ return this.req('photos','readwrite',s=>s.delete(id)); },
+  clearPhotos(){ return this.req('photos','readwrite',s=>s.clear()); }
+};
+
+/* ===== СОСТОЯНИЕ ===== */
+let S = null;          // {data, signs:{p:[], rep:{}}, created}
+let PHOTOS = [];       // [{id, section, caption, ts, lat, lon, acc, w, h, blob, thumb}]
+const thumbURL = new Map();
+
+function blankState(){
+  const data = {};
+  for(const sec of SCHEMA) for(const it of sec.items){
+    if(it.type==='text') data[it.id]=it.def||'';
+    else if(it.type==='date') data[it.id]=todayISO();
+    else if(it.type==='single') data[it.id]='';
+    else if(it.type==='multi'){ data[it.id]=[]; if(it.otherId) data[it.otherId]=''; }
+    else if(it.type==='table') data[it.id] = it.dynamic ? Array.from({length:it.startRows||0},()=>({})) : it.rows.map(()=>({}));
+  }
+  return {data, signs:{p:[], rep:{fio:'',pos:'',date:todayISO(),img:''}}, created:Date.now()};
+}
+let saveT=null;
+function save(){ clearTimeout(saveT); saveT=setTimeout(flush, 400); }
+async function flush(){ clearTimeout(saveT); try{ await IDB.set('state', S); }catch(e){ console.warn(e); } }
+
+function getPath(path){ return path.split('.').reduce((o,k)=>o==null?o:o[k], S.data); }
+function setPath(path, val){ const ks=path.split('.'); let o=S.data; for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null) o[ks[i]]={}; o=o[ks[i]]; } o[ks[ks.length-1]]=val; save(); }
+
+/* ===== РЕНДЕР ФОРМЫ ===== */
+function sectionPhotos(id){ return PHOTOS.filter(p=>p.section===id); }
+function secTitle(id){ if(id==='general') return 'Общие фото'; const s=SCHEMA.find(x=>x.id===id); return s?s.title:id; }
+
+function fieldText(path, label, opts={}){
+  const v = getPath(path) ?? '';
+  const im = opts.inputmode ? ` inputmode="${opts.inputmode}"` : '';
+  const ctl = opts.multiline
+    ? `<textarea data-path="${path}" rows="2">${esc(v)}</textarea>`
+    : `<input type="${opts.type||'text'}" data-path="${path}" value="${esc(v)}"${im} autocomplete="off">`;
+  return `<label class="fld"><span>${esc(label)}</span>${ctl}</label>`;
+}
+function fieldChoice(path, label, options, multi, cls=''){
+  const v = getPath(path);
+  const btns = options.map(o=>{ const on = multi ? (v||[]).includes(o) : v===o;
+    return `<button type="button" class="opt${on?' on':''}" data-choice="${path}" data-val="${esc(o)}" data-multi="${multi?1:0}" aria-pressed="${on}">${esc(o)}</button>`; }).join('');
+  return `<div class="fld ${cls}">${label?`<span>${esc(label)}</span>`:''}<div class="opts">${btns}</div></div>`;
+}
+
+function renderItem(sec, it, ii){
+  const cond = it.showIf ? ` data-cond="${sec.id}:${ii}"` : '';
+  let h='';
+  if(it.type==='text') h = fieldText(it.id, it.label, it);
+  else if(it.type==='date') h = fieldText(it.id, it.label, {type:'date'});
+  else if(it.type==='single') h = fieldChoice(it.id, it.label, it.options, false);
+  else if(it.type==='multi'){
+    h = fieldChoice(it.id, it.label, it.options, true);
+    if(it.otherId) h += `<div data-other="${it.id}" data-of="${esc(it.otherOf)}">${fieldText(it.otherId, `${it.otherOf}: уточните`)}</div>`;
+  }
+  else if(it.type==='table') h = renderTable(it);
+  else if(it.type==='signatures') h = `<div id="signBox"></div>`;
+  return `<div class="item"${cond}>${h}</div>`;
+}
+
+function rowTitleOf(it, row, ri){
+  if(it.dynamic) return `${it.rowTitle} ${ri+1}`;
+  if(row._extra) return null;
+  const lc = it.labelCols; const fx = it.rows[ri];
+  if(lc.length===2 && lc[0].key==='num') return `<b class="num">${esc(fx.num)}</b> ${esc(fx[lc[1].key])}`;
+  return esc(fx[lc[0].key]);
+}
+
+function renderTable(it){
+  const rows = S.data[it.id];
+  let h = it.label ? `<h4 class="sub">${esc(it.label)}</h4>` : '';
+  rows.forEach((row, ri)=>{
+    const base = `${it.id}.${ri}`;
+    const fixed = !it.dynamic && !row._extra ? it.rows[ri] : null;
+    const title = rowTitleOf(it,row,ri);
+    const canDel = (it.dynamic && rows.length > (it.minRows||0)) || row._extra;
+    h += `<div class="rowcard"><div class="rowhead">`;
+    if(row._extra) h += `<input class="rowname" data-path="${base}.${it.labelCols[0].key}" value="${esc(row[it.labelCols[0].key]||'')}" placeholder="${esc(it.extraRows.label)}: название">`;
+    else h += `<div class="rowtitle">${title}</div>`;
+    if(canDel) h += `<button type="button" class="del" data-delrow="${it.id}" data-ri="${ri}" aria-label="Удалить строку">✕</button>`;
+    h += `</div><div class="rowbody">`;
+    const checks = [];
+    for(const c of it.cols){
+      if(fixed && fixed.disable && fixed.disable.includes(c.key)) continue;
+      const p = `${base}.${c.key}`;
+      if(c.kind==='text') h += fieldText(p, c.label, c);
+      else if(c.kind==='choice') h += fieldChoice(p, c.label||'', c.options, false, 'inline');
+      else if(c.kind==='check') checks.push(c);
+      else if(c.kind==='species'){
+        h += `<div class="fld"><span>${esc(c.label)}</span><div class="species">` +
+          c.parts.map((pt,pi)=>`<label><em>${esc(pt)}</em><input inputmode="decimal" data-path="${p}_${pi}" value="${esc(row[c.key+'_'+pi]||'')}"></label>`).join('') +
+          `</div><small class="sum" data-sum="${base}" data-key="${c.key}" data-n="${c.parts.length}"></small></div>`;
+      }
+    }
+    if(checks.length){
+      h += `<div class="fld inline"><span>Отметить</span><div class="opts">` + checks.map(c=>{ const on=!!row[c.key];
+        return `<button type="button" class="opt chk${on?' on':''}" data-check="${base}.${c.key}" aria-pressed="${on}">${esc(c.label)}</button>`; }).join('') + `</div></div>`;
+    }
+    h += `</div></div>`;
+  });
+  if(it.dynamic) h += `<button type="button" class="add" data-addrow="${it.id}">+ Добавить: ${esc(it.rowTitle.toLowerCase())}</button>`;
+  if(it.extraRows) h += `<button type="button" class="add" data-addrow="${it.id}">+ ${esc(it.extraRows.title)}</button>`;
+  return `<div class="tbl" data-table="${it.id}">${h}</div>`;
+}
+
+function renderSection(sec){
+  const n = sectionPhotos(sec.id).length;
+  const body = sec.items.map((it,ii)=>renderItem(sec,it,ii)).join('');
+  const photo = sec.noPhoto ? '' : `<div class="secphotos"><div class="thumbs" data-thumbs="${sec.id}"></div>
+     <button type="button" class="cam" data-cam="${sec.id}">Фото к этому разделу</button></div>`;
+  return `<details class="sec" data-sec="${sec.id}"><summary><span class="st">${esc(sec.title)}</span><span class="badge" data-badge="${sec.id}" ${n?'':'hidden'}>${n} фото</span></summary><div class="secbody">${body}${photo}</div></details>`;
+}
+
+function renderForm(){
+  $('#form').innerHTML = SCHEMA.map(renderSection).join('');
+  $('details.sec').open = true;
+  afterRender();
+}
+function rerenderTable(id){
+  const it = SCHEMA.flatMap(s=>s.items).find(i=>i.id===id);
+  const el = $(`[data-table="${id}"]`); el.outerHTML = renderTable(it); afterRender();
+}
+function afterRender(){ updateConditional(); updateSums(); renderSignatures(); renderThumbs(); updateHeader(); }
+
+function updateConditional(){
+  $$('[data-cond]').forEach(el=>{ const [sid,ii]=el.dataset.cond.split(':'); const it=SCHEMA.find(s=>s.id===sid).items[+ii]; el.hidden = !it.showIf(S.data); });
+  $$('[data-other]').forEach(el=>{ el.hidden = !(S.data[el.dataset.other]||[]).includes(el.dataset.of); });
+}
+function updateSums(){
+  $$('[data-sum]').forEach(el=>{ const row=getPath(el.dataset.sum)||{}; let sum=0, any=false;
+    for(let i=0;i<+el.dataset.n;i++){ const v=parseFloat(String(row[el.dataset.key+'_'+i]||'').replace(',','.')); if(!isNaN(v)){ sum+=v; any=true; } }
+    el.textContent = any ? `Сумма: ${Math.round(sum*10)/10} %` : ''; el.classList.toggle('bad', any && Math.abs(sum-100)>0.01); });
+}
+function updateHeader(){
+  const n = S.data.num ? `№ ${S.data.num}` : 'номер не указан';
+  $('#hdrSub').textContent = `${n}, ${fmtDate(S.data.date)||'—'}`;
+  $('#photoCount').textContent = PHOTOS.length;
+}
+
+/* события формы */
+document.addEventListener('input', e=>{
+  const p = e.target.dataset.path; if(!p) return;
+  setPath(p, e.target.value);
+  if(p.includes('_')) updateSums();
+  if(p==='num'||p==='date') updateHeader();
+  if(p.startsWith('participants.')) { clearTimeout(renderSignatures._t); renderSignatures._t=setTimeout(renderSignatures, 500); }
+});
+document.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.choice){
+    const p=b.dataset.choice, v=b.dataset.val;
+    if(b.dataset.multi==='1'){ const arr=[...(getPath(p)||[])]; const i=arr.indexOf(v); i>=0?arr.splice(i,1):arr.push(v); setPath(p,arr); }
+    else setPath(p, getPath(p)===v ? '' : v);
+    const cur=getPath(p);
+    $$('button', b.parentElement).forEach(x=>{ const on = b.dataset.multi==='1' ? cur.includes(x.dataset.val) : cur===x.dataset.val; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); });
+    updateConditional();
+  } else if(b.dataset.check){
+    const v=!getPath(b.dataset.check); setPath(b.dataset.check, v); b.classList.toggle('on',v); b.setAttribute('aria-pressed',v);
+  } else if(b.dataset.addrow){
+    const id=b.dataset.addrow; S.data[id].push(SCHEMA.flatMap(s=>s.items).find(i=>i.id===id).extraRows ? {_extra:true} : {}); save(); rerenderTable(id);
+  } else if(b.dataset.delrow){
+    if(!confirm('Удалить строку?')) return;
+    const id=b.dataset.delrow; S.data[id].splice(+b.dataset.ri,1);
+    if(id==='participants') S.signs.p.splice(+b.dataset.ri,1);
+    save(); rerenderTable(id);
+  } else if(b.dataset.cam){ takePhoto(b.dataset.cam); }
+  else if(b.dataset.sign){ openSign(b.dataset.sign); }
+});
+
+/* ===== ПОДПИСИ ===== */
+function renderSignatures(){
+  const box=$('#signBox'); if(!box) return;
+  const parts = S.data.participants;
+  let h = `<h4 class="sub">Участники проверки</h4>`;
+  if(!parts.some(p=>p.fio)) h += `<p class="hint">Заполните ФИО в разделе «Участники проверки» — здесь появятся поля для подписей.</p>`;
+  parts.forEach((p,i)=>{ if(!p.fio) return; const sg=S.signs.p[i]||(S.signs.p[i]={date:todayISO(),img:''});
+    h += `<div class="rowcard"><div class="rowhead"><div class="rowtitle">${esc(p.fio)}<small>${esc(p.pos||'')}</small></div></div><div class="rowbody">
+      <label class="fld"><span>Дата</span><input type="date" data-sdate="p.${i}" value="${esc(sg.date||'')}"></label>
+      <div class="sigrow">${sg.img?`<img class="sig" src="${sg.img}" alt="Подпись">`:'<span class="hint">Подпись не поставлена</span>'}
+      <button type="button" class="ghost" data-sign="p.${i}">${sg.img?'Переподписать':'Поставить подпись'}</button></div></div></div>`; });
+  const r=S.signs.rep;
+  h += `<h4 class="sub">Представитель контрагента</h4><p class="hint">С протоколом ознакомлен, заполнено правильно, данные соответствуют действительности.</p>
+    <div class="rowcard"><div class="rowbody">
+    <label class="fld"><span>ФИО</span><input data-srep="fio" value="${esc(r.fio)}"></label>
+    <label class="fld"><span>Должность</span><input data-srep="pos" value="${esc(r.pos)}"></label>
+    <label class="fld"><span>Дата</span><input type="date" data-srep="date" value="${esc(r.date)}"></label>
+    <div class="sigrow">${r.img?`<img class="sig" src="${r.img}" alt="Подпись">`:'<span class="hint">Подпись не поставлена</span>'}
+    <button type="button" class="ghost" data-sign="rep">${r.img?'Переподписать':'Поставить подпись'}</button></div></div></div>`;
+  box.innerHTML = h;
+}
+document.addEventListener('input', e=>{
+  const t=e.target;
+  if(t.dataset.sdate){ const i=+t.dataset.sdate.split('.')[1]; (S.signs.p[i]||(S.signs.p[i]={})).date=t.value; save(); }
+  if(t.dataset.srep){ S.signs.rep[t.dataset.srep]=t.value; save(); }
+});
+let signTarget=null, sctx=null, drawing=false, inked=false;
+function openSign(target){
+  signTarget=target; const m=$('#signModal'); m.hidden=false;
+  const c=$('#signCanvas'); const w=Math.min(window.innerWidth-32, 640); c.width=w*2; c.height=w*0.9; c.style.width=w+'px'; c.style.height=(w*0.45)+'px';
+  sctx=c.getContext('2d'); sctx.fillStyle='#fff'; sctx.fillRect(0,0,c.width,c.height); sctx.lineWidth=5; sctx.lineCap='round'; sctx.lineJoin='round'; sctx.strokeStyle='#0d2a66'; inked=false;
+  const who = target==='rep' ? (S.signs.rep.fio||'Представитель контрагента') : (S.data.participants[+target.split('.')[1]].fio);
+  $('#signWho').textContent = who;
+}
+(function sigInit(){
+  const c=document.getElementById('signCanvas');
+  const pt=e=>{ const r=c.getBoundingClientRect(); return [(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]; };
+  c.addEventListener('pointerdown',e=>{ drawing=true; c.setPointerCapture(e.pointerId); const [x,y]=pt(e); sctx.beginPath(); sctx.moveTo(x,y); sctx.lineTo(x+0.1,y+0.1); sctx.stroke(); inked=true; });
+  c.addEventListener('pointermove',e=>{ if(!drawing) return; const [x,y]=pt(e); sctx.lineTo(x,y); sctx.stroke(); });
+  c.addEventListener('pointerup',()=>drawing=false); c.addEventListener('pointercancel',()=>drawing=false);
+  $('#signClear').onclick=()=>{ sctx.fillStyle='#fff'; sctx.fillRect(0,0,c.width,c.height); inked=false; };
+  $('#signCancel').onclick=()=>{ $('#signModal').hidden=true; };
+  $('#signSave').onclick=()=>{ if(!inked){ toast('Поставьте подпись пальцем в рамке'); return; }
+    const img=c.toDataURL('image/png');
+    if(signTarget==='rep') S.signs.rep.img=img; else { const i=+signTarget.split('.')[1]; (S.signs.p[i]||(S.signs.p[i]={date:todayISO()})).img=img; }
+    save(); $('#signModal').hidden=true; renderSignatures(); };
+})();
+
+/* ===== GPS ===== */
+const GPS = { fix:null, state:'wait', watchId:null };
+function gpsUI(){
+  const el=$('#gps'); const f=GPS.fix; const fresh = f && Date.now()-f.ts < 60000;
+  el.className = 'gps ' + (fresh ? 'ok' : GPS.state==='denied' ? 'bad' : 'wait');
+  el.textContent = fresh ? `GPS ±${Math.round(f.acc)} м` : GPS.state==='denied' ? 'GPS выключен' : 'GPS: поиск';
+}
+function gpsStart(){
+  if(!('geolocation' in navigator)){ GPS.state='denied'; gpsUI(); return; }
+  if(GPS.watchId!=null) navigator.geolocation.clearWatch(GPS.watchId);
+  GPS.watchId = navigator.geolocation.watchPosition(p=>{
+      GPS.fix={lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, ts:Date.now()}; GPS.state='ok'; gpsUI(); },
+    err=>{ GPS.state = err.code===1 ? 'denied' : 'wait'; gpsUI(); },
+    {enableHighAccuracy:true, maximumAge:5000, timeout:30000});
+  gpsUI();
+}
+setInterval(gpsUI, 10000);
+function freshFix(timeout=15000){
+  return new Promise(res=>{
+    if(!('geolocation' in navigator)) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p=>{ GPS.fix={lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy, ts:Date.now()}; GPS.state='ok'; gpsUI(); res(GPS.fix); },
+      ()=>res(null), {enableHighAccuracy:true, maximumAge:10000, timeout});
+  });
+}
+$('#gps').onclick=()=>{
+  if(GPS.state==='denied') alert('Нет доступа к геолокации. Разрешите приложению доступ к местоположению в настройках телефона и включите GPS, затем нажмите на индикатор ещё раз.');
+  gpsStart(); freshFix();
+};
+
+/* ===== ФОТО ===== */
+let camSection='general';
+function takePhoto(section){ camSection=section; freshFix(); const inp=$('#camInput'); inp.value=''; inp.click(); }
+$('#camInput').addEventListener('change', async e=>{
+  const files=[...e.target.files]; if(!files.length) return;
+  busy(true, 'Определяем координаты…');
+  const shotTs = Date.now();
+  let fix = await freshFix(12000);
+  let note = '';
+  if(!fix && GPS.fix && Date.now()-GPS.fix.ts < 5*60000){ fix=GPS.fix; note='последние известные'; }
+  for(const f of files){
+    try{
+      busy(true, 'Наносим координаты на фото…');
+      const ts = (f.lastModified && Math.abs(shotTs - f.lastModified) < 10*60000) ? f.lastModified : shotTs;
+      const rec = await stampPhoto(f, fix, ts, camSection, note);
+      PHOTOS.push(rec); await IDB.putPhoto(rec).catch(()=>toast('Фото не сохранено в памяти устройства'));
+    }catch(err){ console.error(err); alert('Не удалось обработать фото: '+err.message); }
+  }
+  busy(false); renderThumbs(); updateHeader();
+  toast(fix ? 'Фото сохранено с координатами' : 'Фото сохранено без координат — GPS не ответил');
+});
+
+async function loadBitmap(blob){
+  if(window.createImageBitmap){ try{ return await createImageBitmap(blob, {imageOrientation:'from-image'}); }catch(e){} }
+  return await new Promise((res,rej)=>{ const u=URL.createObjectURL(blob); const i=new Image(); i.onload=()=>{ res(i); }; i.onerror=()=>rej(new Error('формат изображения не поддерживается')); i.src=u; });
+}
+const canvasBlob = (c, q=0.88) => new Promise(r=>c.toBlob(r,'image/jpeg',q));
+
+async function stampPhoto(file, fix, ts, section, note){
+  const bmp = await loadBitmap(file);
+  const MAX=2048; const k=Math.min(1, MAX/Math.max(bmp.width,bmp.height));
+  const W=Math.round(bmp.width*k), H=Math.round(bmp.height*k);
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  x.drawImage(bmp,0,0,W,H); if(bmp.close) bmp.close();
+  const d=new Date(ts);
+  const lines = fix
+    ? [`Широта: ${fmtLat(fix.lat)}   Долгота: ${fmtLon(fix.lon)}`, `Точность: ±${Math.round(fix.acc)} м${note?' ('+note+')':''}   ${fmtDT(ts)} (${tzStr(d)})`]
+    : ['Координаты не определены', `${fmtDT(ts)} (${tzStr(d)})`];
+  const proto = `Протокол ${S.data.num?'№ '+S.data.num:'б/н'}: ${secTitle(section)}`;
+  lines.push(proto);
+  let fs=Math.max(16, Math.round(Math.min(W,H)*0.034)); const padX=fs*0.7;
+  const fitW = W - padX*2;
+  x.font=`700 ${fs}px ${FONT}`;
+  const widest = Math.max(...lines.slice(0,2).map(l=>x.measureText(l).width));
+  if(widest>fitW) fs=Math.floor(fs*fitW/widest);
+  const lh=fs*1.3, bandH=lh*lines.length+fs*0.8;
+  x.fillStyle='rgba(0,0,0,0.58)'; x.fillRect(0,H-bandH,W,bandH);
+  x.textBaseline='alphabetic'; x.shadowColor='rgba(0,0,0,.8)'; x.shadowBlur=fs*0.15;
+  lines.forEach((l,i)=>{ x.font = `${i<2?700:400} ${i<2?fs:Math.round(fs*0.85)}px ${FONT}`; x.fillStyle= i===0 ? '#FFD45A' : '#FFFFFF';
+    let s=l; while(x.measureText(s).width>fitW && s.length>4) s=s.slice(0,-2); if(s!==l) s=s.slice(0,-1)+'…';
+    x.fillText(s, padX, H-bandH+fs*0.4+lh*(i+1)-fs*0.28); });
+  x.shadowBlur=0;
+  const blob = await canvasBlob(c, 0.88);
+  const t=document.createElement('canvas'); const tk=320/Math.max(W,H); t.width=Math.round(W*tk); t.height=Math.round(H*tk); t.getContext('2d').drawImage(c,0,0,t.width,t.height);
+  const thumb = await canvasBlob(t, 0.8);
+  return {id:uid(), section, caption:'', ts, lat:fix?fix.lat:null, lon:fix?fix.lon:null, acc:fix?fix.acc:null, approx:!!note, w:W, h:H, blob, thumb};
+}
+function tURL(p){ if(!thumbURL.has(p.id)) thumbURL.set(p.id, URL.createObjectURL(p.thumb||p.blob)); return thumbURL.get(p.id); }
+function renderThumbs(){
+  $$('[data-thumbs]').forEach(el=>{ const ps=sectionPhotos(el.dataset.thumbs);
+    el.innerHTML = ps.map(p=>`<button type="button" class="th" data-open="${p.id}"><img src="${tURL(p)}" alt="Фото"></button>`).join(''); });
+  $$('[data-badge]').forEach(el=>{ const n=sectionPhotos(el.dataset.badge).length; el.hidden=!n; el.textContent=`${n} фото`; });
+  $('#photoCount').textContent = PHOTOS.length;
+  if(!$('#photosView').hidden) renderGallery();
+}
+document.addEventListener('click', e=>{ const b=e.target.closest('[data-open]'); if(b) openPhoto(b.dataset.open); });
+
+/* Галерея */
+function renderGallery(){
+  const g=$('#gallery');
+  if(!PHOTOS.length){ g.innerHTML=`<p class="empty">Фотографий пока нет. Снимайте из нужного раздела протокола или нажмите «Сделать общее фото».</p>`; return; }
+  const opts = [{id:'general',title:'Общие фото'}, ...SCHEMA.filter(s=>!s.noPhoto)];
+  g.innerHTML = PHOTOS.map((p,i)=>`<div class="gitem">
+    <button type="button" class="gimg" data-open="${p.id}"><img src="${tURL(p)}" alt="Фото ${i+1}"></button>
+    <div class="gmeta"><b>Фото ${i+1}</b><small>${p.lat!=null?`${p.lat.toFixed(6)}, ${p.lon.toFixed(6)} (±${Math.round(p.acc)} м)`:'без координат'}<br>${fmtDT(p.ts)}</small>
+    <select data-psec="${p.id}">${opts.map(o=>`<option value="${o.id}"${o.id===p.section?' selected':''}>${esc(o.title)}</option>`).join('')}</select>
+    <input data-pcap="${p.id}" value="${esc(p.caption)}" placeholder="Подпись к фото">
+    <button type="button" class="del wide" data-pdel="${p.id}">Удалить фото</button></div></div>`).join('');
+}
+document.addEventListener('change', e=>{ const id=e.target.dataset.psec; if(!id) return; const p=PHOTOS.find(x=>x.id===id); p.section=e.target.value; IDB.putPhoto(p); renderThumbs(); });
+document.addEventListener('input', e=>{ const id=e.target.dataset.pcap; if(!id) return; const p=PHOTOS.find(x=>x.id===id); p.caption=e.target.value; clearTimeout(p._t); p._t=setTimeout(()=>IDB.putPhoto({...p,_t:undefined}),500); });
+document.addEventListener('click', async e=>{ const id=e.target.dataset && e.target.dataset.pdel; if(!id) return;
+  if(!confirm('Удалить фото без возможности восстановления?')) return;
+  PHOTOS=PHOTOS.filter(p=>p.id!==id); await IDB.delPhoto(id); $('#viewer').hidden=true; renderThumbs(); updateHeader(); });
+function openPhoto(id){ const p=PHOTOS.find(x=>x.id===id); if(!p) return; const v=$('#viewer');
+  const u=URL.createObjectURL(p.blob); $('#viewerImg').src=u; $('#viewerImg').onload=()=>URL.revokeObjectURL(u);
+  $('#viewerDel').dataset.pdel=id; v.hidden=false; }
+$('#viewerClose').onclick=()=>$('#viewer').hidden=true;
+$('#btnPhotos').onclick=()=>{ $('#photosView').hidden=false; renderGallery(); };
+$('#photosClose').onclick=()=>{ $('#photosView').hidden=true; };
+$('#photosCam').onclick=()=>takePhoto('general');
+
+/* ===== НОВАЯ ПРОВЕРКА ===== */
+$('#btnNew').onclick=async()=>{
+  if(!confirm('Начать новую проверку? Все заполненные данные и фотографии текущей проверки будут удалены с телефона. Сначала сформируйте PDF, если он ещё нужен.')) return;
+  S=blankState(); PHOTOS=[]; thumbURL.forEach(u=>URL.revokeObjectURL(u)); thumbURL.clear();
+  await IDB.clearPhotos().catch(()=>{}); await flush(); renderForm(); toast('Новый протокол создан');
+};
+
+function busy(on, msg){ const b=$('#busy'); b.hidden=!on; if(msg) $('#busyMsg').textContent=msg; }
+
+/* ===== ЗАПУСК ===== */
+let DOWNLOADS=null;
+(async function init(){
+  try{ await IDB.open(); }catch(e){ toast('Память устройства недоступна: данные не сохранятся после закрытия', 6000); }
+  try{ S = await IDB.get('state'); }catch(e){}
+  if(!S || !S.data) S = blankState();
+  // миграция: добавить поля, которых не было в сохранённой версии
+  const fresh = blankState(); for(const k in fresh.data) if(!(k in S.data)) S.data[k]=fresh.data[k];
+  try{ PHOTOS = (await IDB.photos()) || []; PHOTOS.sort((a,b)=>a.ts-b.ts); }catch(e){ PHOTOS=[]; }
+  renderForm(); gpsStart();
+  if(window.claude && window.claude.use){ try{ DOWNLOADS = await window.claude.use('downloads'); }catch(e){} }
+})();
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flush(); else { gpsStart(); } });
+
+/* Кнопка «Назад» в Android-приложении закрывает открытые окна */
+window.onAndroidBack = () => { for(const id of ['viewer','signModal','result','busy','photosView']){ const el=$('#'+id); if(el && !el.hidden){ if(id==='busy') return true; el.hidden=true; return true; } } return false; };
+
+/* ===== PDF: вёрстка на canvas + сборка PDF из JPEG-страниц (без внешних библиотек) ===== */
+const FONT = 'Roboto, "Noto Sans", "DejaVu Sans", Arial, sans-serif';
+const PW=1240, PH=1754, MX=78, MT=86, MB=96, CW=PW-2*MX;   // A4 при 150 dpi
+const C_INK='#1A231D', C_LINE='#6F7B72', C_HEAD='#E3EAE4', C_ACC='#1F4A33', C_MUTED='#5A665D';
+const fnt = (s,b) => `${b?'700 ':''}${s}px ${FONT}`;
+
+function toks(c){
+  const out=[];
+  const add=(s,b)=>{ String(s).split('\n').forEach((part,pi)=>{ if(pi>0) out.push({br:1}); part.split(/\s+/).forEach(w=>{ if(w) out.push({w,b}); }); }); };
+  if(c==null) return out; if(!Array.isArray(c)) c=[c];
+  for(const seg of c){
+    if(seg==null) continue;
+    if(typeof seg==='string'||typeof seg==='number') add(seg,false);
+    else if(seg.b!=null) add(seg.b,true);
+    else if('box' in seg) out.push({box:!!seg.box});
+    else if(seg.br) out.push({br:1});
+    else if(seg.gap) out.push({gap:seg.gap});
+  }
+  return out;
+}
+function layout(x, tk, maxW, size){
+  const lines=[[]]; let cx=0; const sp=size*0.3;
+  const push=(t,w)=>{ if(cx>0 && cx+w>maxW){ lines.push([]); cx=0; if(t.gap) return; } lines[lines.length-1].push({t,x:cx,w}); cx+=w+(t.nosp?0:sp); };
+  for(let ti=0; ti<tk.length; ti++){ const t=tk[ti];
+    if(t.br){ lines.push([]); cx=0; continue; }
+    if('box' in t){ const nx=tk[ti+1]; let need=size*0.8;
+      if(nx && nx.w){ x.font=fnt(size,nx.b); need += sp + Math.min(x.measureText(nx.w).width, maxW*0.6); }
+      if(cx>0 && cx+need>maxW){ lines.push([]); cx=0; }
+      push(t,size*0.8); continue; }
+    if(t.gap){ push(t,t.gap*size); continue; }
+    x.font=fnt(size,t.b); let w=x.measureText(t.w).width;
+    if(w<=maxW){ push(t,w); continue; }
+    let piece=''; for(const ch of t.w){ const tw=x.measureText(piece+ch).width; if(tw>maxW && piece){ push({w:piece,b:t.b,nosp:true}, x.measureText(piece).width); piece=ch; } else piece+=ch; }
+    if(piece) push({w:piece,b:t.b}, x.measureText(piece).width);
+  }
+  return lines;
+}
+const LH = s => s*1.3;
+
+class Doc {
+  constructor(dry, total, meta){ this.dry=dry; this.total=total; this.meta=meta; this.n=0; this.y=0; this.pages=[];
+    this.c=document.createElement('canvas'); this.c.width=PW; this.c.height=PH; this.x=this.c.getContext('2d'); }
+  async newPage(){ if(this.n>0) await this.finish(); this.n++; this.y=MT;
+    const x=this.x; x.fillStyle='#fff'; x.fillRect(0,0,PW,PH); }
+  async finish(){
+    const x=this.x;
+    x.strokeStyle='#B9C2BB'; x.lineWidth=1.5; x.beginPath(); x.moveTo(MX,PH-MB+34); x.lineTo(PW-MX,PH-MB+34); x.stroke();
+    x.fillStyle=C_MUTED; x.font=fnt(17); x.textBaseline='alphabetic';
+    x.fillText(this.meta.footer, MX, PH-MB+62);
+    const pg=`Стр. ${this.n} из ${this.total||'?'}`; x.fillText(pg, PW-MX-x.measureText(pg).width, PH-MB+62);
+    if(!this.dry){ const b=await canvasBlob(this.c, 0.9); this.pages.push(new Uint8Array(await b.arrayBuffer())); }
+  }
+  async need(h){ if(this.y+h > PH-MB) await this.newPage(); }
+  drawLines(lines, x0, y0, size, color, align='left', width=0){
+    const x=this.x; const lh=LH(size);
+    lines.forEach((ln,i)=>{
+      const lw = ln.length ? ln[ln.length-1].x + ln[ln.length-1].w : 0;
+      const off = align==='center' ? (width-lw)/2 : 0;
+      const base = y0 + i*lh + size*0.98;
+      for(const it of ln){ const t=it.t, px=x0+off+it.x;
+        if('box' in t){ const s=size*0.72, top=base-size*0.72; x.lineWidth=2; x.strokeStyle=C_INK; x.strokeRect(px,top,s,s);
+          if(t.box){ x.beginPath(); x.lineWidth=3; x.moveTo(px+s*0.18,top+s*0.52); x.lineTo(px+s*0.42,top+s*0.78); x.lineTo(px+s*0.85,top+s*0.2); x.stroke(); } }
+        else if(t.w){ x.font=fnt(size,t.b); x.fillStyle=color||C_INK; x.fillText(t.w, px, base); }
+      }
+    });
+    return lines.length*lh;
+  }
+  async para(content, o={}){
+    const size=o.size||21, ind=o.indent||0; const lines=layout(this.x, toks(content), CW-ind, size); const lh=LH(size);
+    if(o.keep) await this.need(Math.min(lines.length*lh + o.keep, PH-MB-MT));
+    for(const ln of lines){ await this.need(lh); this.drawLines([ln], MX+ind, this.y, size, o.color, o.align, CW-ind); this.y+=lh; }
+    this.y += (o.after ?? 8);
+  }
+  async heading(text){
+    await this.need(150); this.y+=14;
+    const x=this.x; const lines=layout(x, toks({b:text}), CW, 26);
+    this.drawLines(lines, MX, this.y, 26, C_ACC); this.y+=lines.length*LH(26)+6;
+    x.fillStyle=C_ACC; x.fillRect(MX,this.y,CW,3); this.y+=16;
+  }
+  async table(colsW, header, rows, o={}){
+    const size=o.size||19, pad=9, x=this.x;
+    const sum=colsW.reduce((a,b)=>a+b,0); const ws=colsW.map(w=>w/sum*CW);
+    const xs=[]; ws.reduce((acc,w,i)=>{ xs[i]=acc; return acc+w; }, MX);
+    const prep = (row, bold) => row.map((cell,i)=>{
+      const c = (cell && typeof cell==='object' && !Array.isArray(cell) && (cell.img!==undefined || cell.disabled || cell.content!==undefined || cell.center)) ? cell : {content:cell};
+      if(c.img!==undefined) return {...c, h:c.h||80};
+      if(c.disabled) return {...c, h:0};
+      let tk=toks(c.content); if(bold) tk=tk.map(t=>t.w?{...t,b:true}:t);
+      const lines=layout(x, tk, ws[i]-2*pad, size); return {...c, lines, h:lines.length*LH(size)};
+    });
+    const rowH = cells => Math.max(LH(size), ...cells.map(c=>c.h)) + 2*pad;
+    const hdr = header ? prep(header,true) : null; const hh = hdr ? rowH(hdr) : 0;
+    const draw = (cells, h, fill) => {
+      cells.forEach((c,i)=>{
+        if(fill){ x.fillStyle=fill; x.fillRect(xs[i],this.y,ws[i],h); }
+        if(c.fill){ x.fillStyle=c.fill; x.fillRect(xs[i],this.y,ws[i],h); }
+        if(c.disabled){ x.fillStyle='#D5DBD6'; x.fillRect(xs[i],this.y,ws[i],h); }
+        x.strokeStyle=C_LINE; x.lineWidth=1.4; x.strokeRect(xs[i],this.y,ws[i],h);
+        if(c.img){ const im=c.img; const bw=ws[i]-2*pad, bh=c.h; const k=Math.min(bw/im.width, bh/im.height);
+          x.drawImage(im, xs[i]+pad+(bw-im.width*k)/2, this.y+pad+(bh-im.height*k)/2, im.width*k, im.height*k); }
+        else if(c.lines){ const center = c.center || (fill && true);
+          this.drawLines(c.lines, xs[i]+pad, this.y+pad, size, c.color, center?'center':'left', ws[i]-2*pad); }
+      });
+    };
+    await this.need(hh + (rows.length? rowH(prep(rows[0])) : 0) );
+    if(hdr){ draw(hdr, hh, C_HEAD); this.y+=hh; }
+    for(const r of rows){ const cells=prep(r); const h=rowH(cells);
+      if(this.y+h > PH-MB){ await this.newPage(); if(hdr){ draw(hdr,hh,C_HEAD); this.y+=hh; } }
+      draw(cells, h); this.y+=h; }
+    this.y += o.after ?? 18;
+  }
+}
+
+/* значения полей → содержимое для PDF */
+function optTokens(options, isOn){ const out=[]; options.forEach(o=>{ out.push({box:isOn(o)}, o, {gap:0.8}); }); return out; }
+function itemValue(it, d){
+  const v=d[it.id];
+  if(it.type==='text') return v ? String(v) : '—';
+  if(it.type==='date') return fmtDate(v) || '—';
+  if(it.type==='single') return optTokens(it.options, o=>v===o);
+  if(it.type==='multi'){ const t=optTokens(it.options, o=>(v||[]).includes(o)); if(it.otherId && (v||[]).includes(it.otherOf) && d[it.otherId]) t.push(`— ${d[it.otherId]}`); return t; }
+  return '';
+}
+function tableSpec(it, d){
+  const cols=[], hdr=[];
+  if(it.dynamic){ cols.push(0.55); hdr.push({content:'№', center:true}); }
+  for(const lc of (it.labelCols||[])){ cols.push(lc.w); hdr.push(lc.label); }
+  for(const c of it.cols){
+    if(c.kind==='choice'){ c.options.forEach((o,i)=>{ cols.push(c.w/c.options.length); hdr.push({content: (i===0&&c.label?c.label+': ':'')+o, center:true}); }); }
+    else { cols.push(c.w); hdr.push({content:c.label, center:c.kind==='check'}); }
+  }
+  const rows=[];
+  (d[it.id]||[]).forEach((row,ri)=>{
+    const fx = !it.dynamic && !row._extra ? it.rows[ri] : null;
+    const r=[];
+    if(it.dynamic) r.push({content:String(ri+1), center:true});
+    (it.labelCols||[]).forEach((lc,li)=>{ const val = fx ? fx[lc.key] : (li===0 ? (it.extraRows.label+': '+(row[lc.key]||'')) : ''); r.push(li===0&&lc.key==='num'?{content:val,center:true}:val); });
+    for(const c of it.cols){
+      const dis = fx && fx.disable && fx.disable.includes(c.key);
+      if(c.kind==='choice') c.options.forEach(o=> r.push(dis?{disabled:true}:{content:[{box:row[c.key]===o}], center:true}));
+      else if(c.kind==='check') r.push(dis?{disabled:true}:{content:[{box:!!row[c.key]}], center:true});
+      else if(c.kind==='species'){ const parts=c.parts.map((p,i)=>{ const v=row[c.key+'_'+i]; return `${p}: ${v!=null&&v!==''?v+' %':'—'}`; }); r.push(parts.join('\n')); }
+      else r.push(dis?{disabled:true}:(row[c.key]||''));
+    }
+    rows.push(r);
+  });
+  if(!rows.length) rows.push(hdr.map((_,i)=>i===0?'—':''));
+  return {cols, hdr, rows};
+}
+
+async function loadImg(src){ return await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+
+async function renderReport(doc, assets){
+  const d=S.data;
+  await doc.newPage();
+  await doc.para({b:`ПРОТОКОЛ ВЫЕЗДНОЙ ПРОВЕРКИ КОНТРАГЕНТА № ${d.num||'______'}`}, {size:30, align:'center', after:6});
+  const cp = (d.general[0]||{}); const cname = cp.fact || cp.decl;
+  if(cname) await doc.para(`Контрагент: ${cname}`, {size:22, align:'center', after:4, color:C_ACC});
+  await doc.para(`Отчёт сформирован ${fmtDT(Date.now())}. Фотографий в приложении: ${PHOTOS.length}.`, {size:17, align:'center', color:C_MUTED, after:18});
+
+  let photoNo = new Map(); PHOTOS.forEach((p,i)=>photoNo.set(p.id,i+1));
+  for(const sec of SCHEMA){
+    if(sec.id==='sign') continue;
+    if(sec.id!=='head') await doc.heading(sec.title);
+    if(sec.kv){
+      const rows = sec.items.filter(it=>!it.showIf||it.showIf(d)).map(it=>[{content:{b:it.label}}, itemValue(it,d)]);
+      await doc.table([2.1,5], null, rows, {size:20});
+    } else {
+      for(const it of sec.items){
+        if(it.showIf && !it.showIf(d)) continue;
+        if(it.type==='table'){
+          if(it.label) await doc.para({b:it.label}, {size:21, keep:120, after:6});
+          const t=tableSpec(it,d); await doc.table(t.cols, t.hdr, t.rows, {size: t.cols.length>7?16:18});
+        } else {
+          await doc.para([{b:it.label+':'}, ...[].concat(itemValue(it,d))], {size:21, after:10});
+        }
+      }
+    }
+    const ps = sectionPhotos(sec.id);
+    if(ps.length) await doc.para(`Фото к разделу: ${ps.map(p=>'№ '+photoNo.get(p.id)).join(', ')} (см. приложение).`, {size:17, color:C_MUTED, after:6});
+  }
+
+  /* Подписи */
+  await doc.heading('5. Подписи');
+  await doc.para({b:'Участники проверки:'}, {keep:140, after:6});
+  const prow=[]; d.participants.forEach((p,i)=>{ if(!p.fio && !p.pos) return; const sg=S.signs.p[i]||{};
+    prow.push([p.fio||'', p.pos||'', sg.img&&assets.sig[i] ? {img:assets.sig[i], h:76} : '', fmtDate(sg.date)]); });
+  if(!prow.length) prow.push(['','','','']);
+  await doc.table([3,2.6,2.4,1.5], ['ФИО','Должность','Подпись','Дата'], prow);
+  await doc.para([{b:'Представитель контрагента.'}, 'С протоколом ознакомлен, заполнено правильно, данные соответствуют действительности:'], {keep:160, after:6});
+  const r=S.signs.rep;
+  await doc.table([3,2.6,2.4,1.5], ['ФИО','Должность','Подпись','Дата'], [[r.fio||'', r.pos||'', r.img&&assets.rep ? {img:assets.rep, h:76} : '', fmtDate(r.date)]]);
+
+  /* Фотоматериалы */
+  if(PHOTOS.length){
+    await doc.newPage();
+    await doc.heading('Приложение. Фотоматериалы проверки');
+    await doc.para('На каждой фотографии нанесены координаты места съёмки (широта, долгота), точность определения, дата и время съёмки.', {size:18, color:C_MUTED, after:14});
+    for(let i=0;i<PHOTOS.length;i++){
+      const p=PHOTOS[i]; const maxH=640; const k=Math.min(CW/p.w, maxH/p.h); const w=p.w*k, h=p.h*k;
+      const cap=[{b:`Фото ${i+1}.`}, secTitle(p.section)+(p.caption?'. '+p.caption:'')];
+      const geo = p.lat!=null ? `Широта ${fmtLat(p.lat)}, долгота ${fmtLon(p.lon)}, точность ±${Math.round(p.acc)} м${p.approx?' (последние известные координаты)':''}. Снято ${fmtDT(p.ts)}.` : `Координаты не определены. Снято ${fmtDT(p.ts)}.`;
+      const capH = layout(doc.x,toks(cap),CW,19).length*LH(19) + layout(doc.x,toks(geo),CW,17).length*LH(17);
+      await doc.need(h+capH+40);
+      if(!doc.dry){ const bmp=await loadBitmap(p.blob); doc.x.drawImage(bmp, MX+(CW-w)/2, doc.y, w, h); if(bmp.close) bmp.close();
+        doc.x.strokeStyle=C_LINE; doc.x.lineWidth=1; doc.x.strokeRect(MX+(CW-w)/2, doc.y, w, h); }
+      doc.y += h+10;
+      await doc.para(cap, {size:19, after:2}); await doc.para(geo, {size:17, color:C_MUTED, after:30});
+    }
+  }
+  await doc.finish();
+}
+
+function pdfFromJpegs(pages, title){
+  const enc=new TextEncoder(); const chunks=[]; let len=0; const offs=[];
+  const put = s => { const b = typeof s==='string' ? enc.encode(s) : s; chunks.push(b); len+=b.length; };
+  const obj = (n, body, stream) => { offs[n]=len; put(`${n} 0 obj\n`); put(body); if(stream){ put('\nstream\n'); put(stream); put('\nendstream'); } put('\nendobj\n'); };
+  const u16 = s => { let h='FEFF'; for(const ch of s){ const c=ch.charCodeAt(0); h+=c.toString(16).padStart(4,'0').toUpperCase(); } return `<${h}>`; };
+  put('%PDF-1.4\n'); put(new Uint8Array([0x25,0xE2,0xE3,0xCF,0xD3,0x0A]));
+  const n=pages.length; const kids=[]; for(let i=0;i<n;i++) kids.push(`${4+i*3} 0 R`);
+  const d=new Date(); const pdfDate=`D:${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${n} >>`);
+  obj(3, `<< /Title ${u16(title)} /Producer ${u16('Выездная проверка контрагента')} /CreationDate (${pdfDate}) >>`);
+  pages.forEach((jpg,i)=>{
+    const p=4+i*3, c=p+1, im=p+2;
+    obj(p, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 ${im} 0 R >> >> /Contents ${c} 0 R >>`);
+    const cs=enc.encode('q 595.28 0 0 841.89 0 0 cm /Im0 Do Q');
+    obj(c, `<< /Length ${cs.length} >>`, cs);
+    obj(im, `<< /Type /XObject /Subtype /Image /Width ${PW} /Height ${PH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>`, jpg);
+  });
+  const total=4+n*3; const xref=len;
+  let x=`xref\n0 ${total}\n0000000000 65535 f \n`; for(let i=1;i<total;i++) x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+  put(x); put(`trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(chunks, {type:'application/pdf'});
+}
+
+function missingFields(){
+  const d=S.data, m=[];
+  if(!d.num) m.push('номер протокола'); if(!d.date) m.push('дата проверки'); if(!d.kind) m.push('вид проверки');
+  if(!d.participants.some(p=>p.fio)) m.push('участники проверки');
+  const g=d.general[0]||{}; if(!g.decl && !g.fact) m.push('наименование контрагента');
+  if(!d.participants.every((p,i)=>!p.fio || (S.signs.p[i]&&S.signs.p[i].img))) m.push('подписи участников');
+  return m;
+}
+
+let lastPdf=null;
+async function makePdf(){
+  const miss=missingFields();
+  if(miss.length && !confirm(`Не заполнено: ${miss.join(', ')}.\n\nСформировать PDF всё равно?`)) return;
+  busy(true,'Готовим отчёт…');
+  try{
+    await flush();
+    const assets={sig:{}, rep:null};
+    for(let i=0;i<S.signs.p.length;i++){ const sg=S.signs.p[i]; if(sg&&sg.img) assets.sig[i]=await loadImg(sg.img); }
+    if(S.signs.rep.img) assets.rep=await loadImg(S.signs.rep.img);
+    const meta={footer:`Протокол выездной проверки № ${S.data.num||'б/н'} от ${fmtDate(S.data.date)}`};
+    const dry=new Doc(true,0,meta); await renderReport(dry, assets);
+    busy(true,`Формируем страницы (${dry.n})…`);
+    const doc=new Doc(false,dry.n,meta); await renderReport(doc, assets);
+    const title=`Протокол выездной проверки № ${S.data.num||'б/н'}`;
+    const blob=pdfFromJpegs(doc.pages, title);
+    const cp=(S.data.general[0]||{}); const cn=(cp.fact||cp.decl||'').replace(/[«»"]/g,'').trim();
+    const fname = `Протокол_${S.data.num||'б-н'}_${fmtDate(S.data.date)}${cn?'_'+cn:''}`.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'_').slice(0,120)+'.pdf';
+    lastPdf={blob, fname, pages:doc.n};
+    busy(false); showResult();
+  }catch(e){ console.error(e); busy(false); alert('Не удалось сформировать PDF: '+(e.message||e)); }
+}
+
+/* ===== Выдача файла ===== */
+async function blobToB64Chunks(blob, fn){
+  const buf=new Uint8Array(await blob.arrayBuffer()); const CH=3*262144;
+  for(let i=0;i<buf.length;i+=CH){ const part=buf.subarray(i,i+CH); let s=''; for(let j=0;j<part.length;j+=8192) s+=String.fromCharCode.apply(null, part.subarray(j,j+8192)); fn(btoa(s)); }
+}
+function showResult(){
+  const r=$('#result'); r.hidden=false;
+  $('#resInfo').textContent=`${lastPdf.fname}\n${lastPdf.pages} стр., ${(lastPdf.blob.size/1048576).toFixed(1)} МБ`;
+  const canShare = !window.AndroidBridge && navigator.canShare && navigator.canShare({files:[new File([lastPdf.blob], lastPdf.fname, {type:'application/pdf'})]});
+  $('#resShare').hidden = !(window.AndroidBridge || canShare);
+}
+$('#resSave').onclick=async()=>{
+  const {blob,fname}=lastPdf;
+  if(window.AndroidBridge){ AndroidBridge.beginFile(fname); await blobToB64Chunks(blob, c=>AndroidBridge.appendChunk(c)); const res=AndroidBridge.finishFile(); toast(res||'Сохранено в «Загрузки»', 4000); return; }
+  if(DOWNLOADS){ try{ await DOWNLOADS.save({filename:fname, data:blob}); toast('PDF сохранён'); }catch(e){ if(e.code!=='declined') alert('Не удалось сохранить: '+(e.message||e.code)); } return; }
+  const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 60000);
+};
+$('#resShare').onclick=async()=>{
+  const {blob,fname}=lastPdf;
+  if(window.AndroidBridge){ AndroidBridge.beginFile(fname); await blobToB64Chunks(blob, c=>AndroidBridge.appendChunk(c)); AndroidBridge.shareFile(); return; }
+  try{ await navigator.share({files:[new File([blob], fname, {type:'application/pdf'})], title:fname}); }catch(e){ if(e.name!=='AbortError') alert('Не удалось отправить: '+e.message); }
+};
+$('#resClose').onclick=()=>$('#result').hidden=true;
+$('#btnPdf').onclick=makePdf;
+
+</script>
+</body>
+</html>

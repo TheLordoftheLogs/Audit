@@ -1,0 +1,1 @@
+-keepclassmembers class ru.egger.audit.MainActivity$Bridge { @android.webkit.JavascriptInterface <methods>; }
